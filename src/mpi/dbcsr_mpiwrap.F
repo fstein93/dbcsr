@@ -1395,6 +1395,9 @@ CONTAINS
 #if defined(__parallel)
       INTEGER                                  :: count
       MPI_STATUS_TYPE_ARRAY(SIZE(requests))    :: status
+#if ! defined(__USE_MPI_F08)
+      INTEGER                                  :: i
+#endif
 #endif
 
       ierr = 0
@@ -1402,6 +1405,13 @@ CONTAINS
 
 #if defined(__parallel)
       count = SIZE(requests)
+#if defined(__USE_MPI_F08)
+      status = MPI_STATUS_IGNORE
+#else
+      DO i = 1, count
+         status(:, i) = MPI_STATUS_IGNORE
+      END DO
+#endif
       CALL mpi_waitall_internal(count, requests, status, ierr) ! MPI_STATUSES_IGNORE openmpi workaround
       IF (ierr /= 0) CALL mp_stop(ierr, "mpi_waitall @ "//routineN)
 #else
@@ -1420,6 +1430,9 @@ CONTAINS
 #if defined(__parallel)
       INTEGER                                  :: count
       MPI_STATUS_TYPE_ARRAY(SIZE(requests))    :: status
+#if ! defined(__USE_MPI_F08)
+      INTEGER                                  :: i
+#endif
 #endif
 
       ierr = 0
@@ -1427,6 +1440,13 @@ CONTAINS
 
 #if defined(__parallel)
       count = SIZE(requests)
+#if defined(__USE_MPI_F08)
+      status = MPI_STATUS_IGNORE
+#else
+      DO i = 1, count
+         status(:, i) = MPI_STATUS_IGNORE
+      END DO
+#endif
 
       CALL mpi_waitall_internal(count, requests, status, ierr) ! MPI_STATUSES_IGNORE openmpi workaround
       IF (ierr /= 0) CALL mp_stop(ierr, "mpi_waitall @ "//routineN)
@@ -3097,11 +3117,17 @@ CONTAINS
 
          msglen = 1
 #if defined(__parallel)
-         CALL mpi_recv(msg, msglen, ${mpi_type1}$, source, tag, gid%handle, status, ierr)
-         IF (ierr /= 0) CALL mp_stop(ierr, "mpi_recv @ "//routineN)
-         CALL add_perf(perf_id=14, msg_size=msglen*${bytes1}$)
-         source = status MPI_STATUS_EXTRACT(MPI_SOURCE)
-         tag = status MPI_STATUS_EXTRACT(MPI_TAG)
+         IF (source == mp_any_source .OR. tag == mp_any_tag) THEN
+            CALL mpi_recv(msg, msglen, ${mpi_type1}$, source, tag, gid%handle, status, ierr)
+            IF (ierr /= 0) CALL mp_stop(ierr, "mpi_recv @ "//routineN)
+            CALL add_perf(perf_id=14, msg_size=msglen*${bytes1}$)
+            source = status MPI_STATUS_EXTRACT(MPI_SOURCE)
+            tag = status MPI_STATUS_EXTRACT(MPI_TAG)
+         ELSE
+            CALL mpi_recv(msg, msglen, ${mpi_type1}$, source, tag, gid%handle, MPI_STATUS_IGNORE, ierr)
+            IF (ierr /= 0) CALL mp_stop(ierr, "mpi_recv @ "//routineN)
+            CALL add_perf(perf_id=14, msg_size=msglen*${bytes1}$)
+         END IF
 #else
          MARK_USED(msg)
          MARK_USED(source)
@@ -3134,11 +3160,17 @@ CONTAINS
 
          msglen = SIZE(msg)
 #if defined(__parallel)
-         CALL mpi_recv(msg, msglen, ${mpi_type1}$, source, tag, gid%handle, status, ierr)
-         IF (ierr /= 0) CALL mp_stop(ierr, "mpi_recv @ "//routineN)
-         CALL add_perf(perf_id=14, msg_size=msglen*${bytes1}$)
-         source = status MPI_STATUS_EXTRACT(MPI_SOURCE)
-         tag = status MPI_STATUS_EXTRACT(MPI_TAG)
+         IF (source == mp_any_source .OR. tag == mp_any_tag) THEN
+            CALL mpi_recv(msg, msglen, ${mpi_type1}$, source, tag, gid%handle, status, ierr)
+            IF (ierr /= 0) CALL mp_stop(ierr, "mpi_recv @ "//routineN)
+            CALL add_perf(perf_id=14, msg_size=msglen*${bytes1}$)
+            source = status MPI_STATUS_EXTRACT(MPI_SOURCE)
+            tag = status MPI_STATUS_EXTRACT(MPI_TAG)
+         ELSE
+            CALL mpi_recv(msg, msglen, ${mpi_type1}$, source, tag, gid%handle, MPI_STATUS_IGNORE, ierr)
+            IF (ierr /= 0) CALL mp_stop(ierr, "mpi_recv @ "//routineN)
+            CALL add_perf(perf_id=14, msg_size=msglen*${bytes1}$)
+         END IF
 #else
          MARK_USED(msg)
          MARK_USED(source)
